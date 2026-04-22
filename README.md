@@ -18,8 +18,12 @@ luci-app-wol-api/
     │   ├── config/wol-api
     │   └── init.d/wol-api
     ├── usr/
-    │   ├── libexec/wol-api/server.py
-    │   └── share/rpcd/acl.d/luci-app-wol-api.json
+    │   ├── libexec/wol-api/
+    │   │   ├── server.py
+    │   │   └── wake_client.sh
+    │   └── share/
+    │       ├── luci/menu.d/luci-app-wol-api.json
+    │       └── rpcd/acl.d/luci-app-wol-api.json
     └── www/cgi-bin/wol-api
 ```
 
@@ -80,6 +84,13 @@ make menuconfig
 make package/luci-app-wol-api/compile V=s
 ```
 
+编译前建议先做这几个检查：
+
+```bash
+python3 -m py_compile root/usr/libexec/wol-api/server.py
+find . -type f | sort
+```
+
 编译后安装生成的 `.ipk`。
 
 ### 方式 2，手动拷贝测试
@@ -98,12 +109,13 @@ opkg install luci-base luci-compat rpcd python3-light etherwake curl
 - `root/usr/libexec/wol-api/server.py` -> `/usr/libexec/wol-api/server.py`
 - `root/usr/share/rpcd/acl.d/luci-app-wol-api.json` -> `/usr/share/rpcd/acl.d/luci-app-wol-api.json`
 - `root/usr/share/luci/menu.d/luci-app-wol-api.json` -> `/usr/share/luci/menu.d/luci-app-wol-api.json`
+- `root/usr/libexec/wol-api/wake_client.sh` -> `/usr/libexec/wol-api/wake_client.sh`
 - `htdocs/luci-static/resources/view/wol-api/config.js` -> `/www/luci-static/resources/view/wol-api/config.js`
 
 然后赋权并启用：
 
 ```bash
-chmod +x /etc/init.d/wol-api /usr/libexec/wol-api/server.py
+chmod +x /etc/init.d/wol-api /usr/libexec/wol-api/server.py /usr/libexec/wol-api/wake_client.sh
 /etc/init.d/wol-api enable
 /etc/init.d/wol-api start
 /etc/init.d/uhttpd reload
@@ -191,9 +203,19 @@ curl http://192.168.1.1:8037/healthz
 - 还没做 package 安装后的自动 service reload / postinst 细节
 - 还没有完整的构建验证
 
+### 本轮检查结果
+
+我已经做过的近似校验：
+
+- `python3 -m py_compile root/usr/libexec/wol-api/server.py` 通过
+- 项目关键文件齐全性检查通过
+- 菜单入口补齐
+- 启动脚本补了 reload trigger
+- 客户端脚本已纳入插件目录
+
 ### 结论
 
-当前这版已经是一个**可以继续发展的 LuCI 插件项目骨架**，适合先上 GitHub 继续迭代。
+当前这版已经是一个**可以继续发展的 LuCI 插件项目骨架**，而且比上一轮更完整，已经适合继续做真机编译测试。
 如果你要把它打磨成更“像官方包”的状态，下一步建议是：
 
 1. 改成更贴近 uhttpd/rpcd/ubus 风格的后端

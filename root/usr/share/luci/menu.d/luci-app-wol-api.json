@@ -7,7 +7,7 @@
       "path": "wol-api/config"
     },
     "depends": {
-      "acl": [ "luci-app-wol-api" ]
+      "uci": "wol-api"
     }
   }
 }
