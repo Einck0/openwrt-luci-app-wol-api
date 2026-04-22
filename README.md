@@ -58,6 +58,14 @@ Body 二选一：
 - 是否允许直接传入原始 MAC
 - 设备名到 MAC 的映射表
 
+### LuCI 菜单位置
+
+安装后可在：
+
+- `服务` -> `WOL API`
+
+中进行可视化维护。
+
 ## 安装方式
 
 ### 方式 1，通过 OpenWrt SDK / Buildroot 编译 ipk
@@ -89,6 +97,7 @@ opkg install luci-base luci-compat rpcd python3-light etherwake curl
 - `root/etc/init.d/wol-api` -> `/etc/init.d/wol-api`
 - `root/usr/libexec/wol-api/server.py` -> `/usr/libexec/wol-api/server.py`
 - `root/usr/share/rpcd/acl.d/luci-app-wol-api.json` -> `/usr/share/rpcd/acl.d/luci-app-wol-api.json`
+- `root/usr/share/luci/menu.d/luci-app-wol-api.json` -> `/usr/share/luci/menu.d/luci-app-wol-api.json`
 - `htdocs/luci-static/resources/view/wol-api/config.js` -> `/www/luci-static/resources/view/wol-api/config.js`
 
 然后赋权并启用：
@@ -98,6 +107,7 @@ chmod +x /etc/init.d/wol-api /usr/libexec/wol-api/server.py
 /etc/init.d/wol-api enable
 /etc/init.d/wol-api start
 /etc/init.d/uhttpd reload
+rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
 ```
 
 ## 配置方式
@@ -160,6 +170,36 @@ curl -X POST http://192.168.1.1:8037/api/wake \
 ```bash
 curl http://192.168.1.1:8037/healthz
 ```
+
+## 当前实现审查
+
+### 已具备
+
+- 标准 LuCI 应用目录结构雏形
+- UCI 配置文件
+- procd 启动脚本
+- LuCI JS 配置页
+- 菜单入口
+- rpcd ACL
+- 基于 token 的 API
+
+### 目前仍然偏简化的点
+
+- 现在的 API 服务是 Python `http.server`，能用，但还不是 OpenWrt 世界里最原生的做法
+- `www/cgi-bin/wol-api` 目前只是一个占位入口，实际主服务仍由独立监听端口处理
+- 还没补 i18n、po 翻译文件
+- 还没做 package 安装后的自动 service reload / postinst 细节
+- 还没有完整的构建验证
+
+### 结论
+
+当前这版已经是一个**可以继续发展的 LuCI 插件项目骨架**，适合先上 GitHub 继续迭代。
+如果你要把它打磨成更“像官方包”的状态，下一步建议是：
+
+1. 改成更贴近 uhttpd/rpcd/ubus 风格的后端
+2. 增加翻译与菜单细节
+3. 做一次真实 OpenWrt SDK 编译验证
+4. 补 package 安装后的细节处理
 
 ## 安全建议
 
