@@ -153,6 +153,25 @@ return view.extend({
 			var key = JSON.stringify([name, mac]);
 			return knownMap[key] ? key : '';
 		};
+		o.onchange = function(ev, section_id, value) {
+			var parsed, nameEl, macEl;
+
+			if (!value)
+				return;
+
+			try {
+				parsed = JSON.parse(value);
+				nameEl = this.map.findElement('id', 'cbid.wol-api.%s.name'.format(section_id));
+				macEl = this.map.findElement('id', 'cbid.wol-api.%s.mac'.format(section_id));
+
+				if (nameEl)
+					nameEl.value = parsed[0];
+				if (macEl)
+					macEl.value = parsed[1];
+			}
+			catch (e) {
+			}
+		};
 		o.write = function(section_id, formvalue) {
 			var parsed;
 			if (!formvalue)
