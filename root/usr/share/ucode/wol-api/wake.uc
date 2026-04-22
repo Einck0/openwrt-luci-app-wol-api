@@ -36,10 +36,10 @@ function load_config() {
 	c.load('wol-api');
 	let main = c.get_all('wol-api', 'main') || {};
 	let devices = {};
-	for (let s in c.sections('wol-api', 'device')) {
+	c.foreach('wol-api', 'device', (s) => {
 		if (s.name && s.mac)
 			devices[s.name] = s.mac;
-	}
+	});
 	return { main, devices };
 }
 
