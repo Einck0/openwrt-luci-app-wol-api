@@ -5,6 +5,7 @@ config wol-api 'main'
 	option interface 'br-lan'
 	option token ''
 	option allow_raw_mac '1'
+	option use_etherwake_targets '1'
 
 config device
 	option name 'nas'

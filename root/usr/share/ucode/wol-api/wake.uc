@@ -47,6 +47,14 @@ function load_config() {
 			devices[s.name] = s.mac;
 	});
 
+	if ((main.use_etherwake_targets || '1') == '1') {
+		c.load('etherwake');
+		c.foreach('etherwake', 'target', function(s) {
+			if (s.name && s.mac && !devices[s.name])
+				devices[s.name] = s.mac;
+		});
+	}
+
 	return {
 		main: main,
 		devices: devices
@@ -171,6 +179,7 @@ json_out(200, {
 	name: name,
 	mac: mac,
 	interface: iface,
-	message: 'wake packet sent'
+	message: 'wake packet sent',
+	known_devices: keys(cfg.devices)
 });
 exit(0);
