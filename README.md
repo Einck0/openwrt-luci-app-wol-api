@@ -230,6 +230,16 @@ curl http://192.168.1.1:8037/healthz
 - token 请使用高强度随机值
 - 如果你不需要直传 MAC，把 `allow_raw_mac` 设为 `0`
 
+## 后续优化建议
+
+如果你继续迭代这个项目，优先级我建议这样排：
+
+1. 用真实 OpenWrt SDK 编译一遍，确认 `.ipk` 安装链路
+2. 把 Python `http.server` 后端逐步换成更贴近 OpenWrt 生态的方式
+3. 增加 i18n / po 翻译
+4. 增加更细的访问控制、日志和错误提示
+5. 如果需要，再补 shutdown 配套能力
+
 ## GitHub 仓库建议
 
 建议仓库名：`openwrt-luci-app-wol-api`
