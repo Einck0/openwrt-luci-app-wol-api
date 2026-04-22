@@ -154,20 +154,22 @@ return view.extend({
 			return knownMap[key] ? key : '';
 		};
 		o.onchange = function(ev, section_id, value) {
-			var parsed, nameEl, macEl;
+			var parsed, nameOpt, macOpt, nameWidget, macWidget;
 
 			if (!value)
 				return;
 
 			try {
 				parsed = JSON.parse(value);
-				nameEl = this.map.findElement('id', 'cbid.wol-api.%s.name'.format(section_id));
-				macEl = this.map.findElement('id', 'cbid.wol-api.%s.mac'.format(section_id));
+				nameOpt = this.map.lookupOption('name', section_id);
+				macOpt = this.map.lookupOption('mac', section_id);
+				nameWidget = nameOpt ? nameOpt[0].getUIElement(section_id) : null;
+				macWidget = macOpt ? macOpt[0].getUIElement(section_id) : null;
 
-				if (nameEl)
-					nameEl.value = parsed[0];
-				if (macEl)
-					macEl.value = parsed[1];
+				if (nameWidget)
+					nameWidget.setValue(parsed[0]);
+				if (macWidget)
+					macWidget.setValue(parsed[1]);
 			}
 			catch (e) {
 			}
