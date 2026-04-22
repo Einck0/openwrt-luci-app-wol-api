@@ -62,7 +62,7 @@ function load_config() {
 }
 
 function run_etherwake(interface, mac) {
-	return system(['/usr/sbin/etherwake', '-i', interface, mac]);
+	return system(['/usr/bin/etherwake', '-i', interface, mac]);
 }
 
 let env = getenv();
