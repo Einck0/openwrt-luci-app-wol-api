@@ -1,0 +1,11 @@
+{
+  "luci-app-wol-api": {
+    "description": "Grant access to WOL API configuration",
+    "read": {
+      "uci": [ "wol-api" ]
+    },
+    "write": {
+      "uci": [ "wol-api" ]
+    }
+  }
+}
