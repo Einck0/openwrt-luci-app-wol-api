@@ -35,6 +35,10 @@ endef
 define Build/Compile
 endef
 
+define Package/$(PKG_NAME)/conffiles
+/etc/config/wol-api
+endef
+
 define Package/$(PKG_NAME)/install
 	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(INSTALL_DIR) $(1)/www
