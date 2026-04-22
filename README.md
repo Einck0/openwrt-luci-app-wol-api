@@ -5,6 +5,7 @@
 - LuCI 可视化配置界面
 - 基于 Bearer Token 的 WOL HTTP API
 - 通过设备名或直接 MAC 地址唤醒设备
+- 基于 `uhttpd + CGI + ucode` 的更贴近 OpenWrt 生态实现
 - procd 自启动服务
 
 ## 项目结构
@@ -18,12 +19,13 @@ luci-app-wol-api/
     │   ├── config/wol-api
     │   └── init.d/wol-api
     ├── usr/
+    │   ├── bin/wol-api
     │   ├── libexec/wol-api/
-    │   │   ├── server.py
     │   │   └── wake_client.sh
     │   └── share/
     │       ├── luci/menu.d/luci-app-wol-api.json
-    │       └── rpcd/acl.d/luci-app-wol-api.json
+    │       ├── rpcd/acl.d/luci-app-wol-api.json
+    │       └── ucode/wol-api/wake.uc
     └── www/cgi-bin/wol-api
 ```
 
@@ -87,7 +89,6 @@ make package/luci-app-wol-api/compile V=s
 编译前建议先做这几个检查：
 
 ```bash
-python3 -m py_compile root/usr/libexec/wol-api/server.py
 find . -type f | sort
 ```
 
@@ -99,23 +100,25 @@ find . -type f | sort
 
 ```bash
 opkg update
-opkg install luci-base luci-compat rpcd python3-light etherwake curl
+opkg install luci-base rpcd uhttpd ucode etherwake curl
 ```
 
 然后把以下文件复制到路由器对应路径：
 
 - `root/etc/config/wol-api` -> `/etc/config/wol-api`
 - `root/etc/init.d/wol-api` -> `/etc/init.d/wol-api`
-- `root/usr/libexec/wol-api/server.py` -> `/usr/libexec/wol-api/server.py`
+- `root/usr/bin/wol-api` -> `/usr/bin/wol-api`
+- `root/usr/share/ucode/wol-api/wake.uc` -> `/usr/share/ucode/wol-api/wake.uc`
 - `root/usr/share/rpcd/acl.d/luci-app-wol-api.json` -> `/usr/share/rpcd/acl.d/luci-app-wol-api.json`
 - `root/usr/share/luci/menu.d/luci-app-wol-api.json` -> `/usr/share/luci/menu.d/luci-app-wol-api.json`
 - `root/usr/libexec/wol-api/wake_client.sh` -> `/usr/libexec/wol-api/wake_client.sh`
+- `root/www/cgi-bin/wol-api` -> `/www/cgi-bin/wol-api`
 - `htdocs/luci-static/resources/view/wol-api/config.js` -> `/www/luci-static/resources/view/wol-api/config.js`
 
 然后赋权并启用：
 
 ```bash
-chmod +x /etc/init.d/wol-api /usr/libexec/wol-api/server.py /usr/libexec/wol-api/wake_client.sh
+chmod +x /etc/init.d/wol-api /usr/bin/wol-api /usr/libexec/wol-api/wake_client.sh /www/cgi-bin/wol-api
 /etc/init.d/wol-api enable
 /etc/init.d/wol-api start
 /etc/init.d/uhttpd reload
@@ -162,7 +165,7 @@ uci commit wol-api
 ### 按 name
 
 ```bash
-curl -X POST http://192.168.1.1:8037/api/wake \
+curl -X POST http://192.168.1.1:8037/cgi-bin/wol-api \
   -H 'Authorization: Bearer your-token' \
   -H 'Content-Type: application/json' \
   -d '{"name":"nas"}'
@@ -171,7 +174,7 @@ curl -X POST http://192.168.1.1:8037/api/wake \
 ### 按 mac
 
 ```bash
-curl -X POST http://192.168.1.1:8037/api/wake \
+curl -X POST http://192.168.1.1:8037/cgi-bin/wol-api \
   -H 'Authorization: Bearer your-token' \
   -H 'Content-Type: application/json' \
   -d '{"mac":"AA:BB:CC:DD:EE:FF"}'
@@ -180,7 +183,7 @@ curl -X POST http://192.168.1.1:8037/api/wake \
 ### 健康检查
 
 ```bash
-curl http://192.168.1.1:8037/healthz
+curl http://192.168.1.1:8037/cgi-bin/wol-api/healthz
 ```
 
 ## 当前实现审查
@@ -194,31 +197,31 @@ curl http://192.168.1.1:8037/healthz
 - 菜单入口
 - rpcd ACL
 - 基于 token 的 API
+- 基于 `uhttpd + CGI + ucode` 的实现骨架
 
 ### 目前仍然偏简化的点
 
-- 现在的 API 服务是 Python `http.server`，能用，但还不是 OpenWrt 世界里最原生的做法
-- `www/cgi-bin/wol-api` 目前只是一个占位入口，实际主服务仍由独立监听端口处理
+- 目前是用独立 `uhttpd` 实例监听配置端口，不是直接复用主 Web 管理口
 - 还没补 i18n、po 翻译文件
 - 还没做 package 安装后的自动 service reload / postinst 细节
-- 还没有完整的构建验证
+- 还没有完整的 OpenWrt SDK 构建验证
 
 ### 本轮检查结果
 
 我已经做过的近似校验：
 
-- `python3 -m py_compile root/usr/libexec/wol-api/server.py` 通过
 - 项目关键文件齐全性检查通过
 - 菜单入口补齐
 - 启动脚本补了 reload trigger
 - 客户端脚本已纳入插件目录
+- 依赖从 `python3-light` 收敛到更 OpenWrt 风格的 `uhttpd + ucode`
 
 ### 结论
 
-当前这版已经是一个**可以继续发展的 LuCI 插件项目骨架**，而且比上一轮更完整，已经适合继续做真机编译测试。
-如果你要把它打磨成更“像官方包”的状态，下一步建议是：
+当前这版已经比之前**更接近 OpenWrt 生态原生实现**，不再依赖 Python 作为 API 主后端。
+如果你要把它继续打磨成更“像官方包”的状态，下一步建议是：
 
-1. 改成更贴近 uhttpd/rpcd/ubus 风格的后端
+1. 改成复用主 uhttpd 或更标准的 rpcd/ubus 接法
 2. 增加翻译与菜单细节
 3. 做一次真实 OpenWrt SDK 编译验证
 4. 补 package 安装后的细节处理
@@ -235,10 +238,9 @@ curl http://192.168.1.1:8037/healthz
 如果你继续迭代这个项目，优先级我建议这样排：
 
 1. 用真实 OpenWrt SDK 编译一遍，确认 `.ipk` 安装链路
-2. 把 Python `http.server` 后端逐步换成更贴近 OpenWrt 生态的方式
-3. 增加 i18n / po 翻译
-4. 增加更细的访问控制、日志和错误提示
-5. 如果需要，再补 shutdown 配套能力
+2. 增加 i18n / po 翻译
+3. 增加更细的访问控制、日志和错误提示
+4. 如果需要，再补 shutdown 配套能力
 
 ## GitHub 仓库建议
 
