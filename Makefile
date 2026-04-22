@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-wol-api
+PKG_NAME:=luci-app-wolapi
 PKG_VERSION:=0.2.1
 PKG_RELEASE:=1
 

@@ -5,15 +5,15 @@
 
 return view.extend({
 	load: function() {
-		return uci.load('wol-api');
+		return uci.load('wolapi');
 	},
 
 	render: function() {
 		var m, s, o;
 
-		m = new form.Map('wol-api', _('WOL API'), _('Configure the Wake-on-LAN API service and device mappings.'));
+		m = new form.Map('wolapi', _('WOL API'), _('Configure the Wake-on-LAN API service and device mappings.'));
 
-		s = m.section(form.NamedSection, 'main', 'wol-api', _('Service'));
+		s = m.section(form.NamedSection, 'main', 'wolapi', _('Service'));
 		s.anonymous = true;
 
 		o = s.option(form.Flag, 'enabled', _('Enable'));

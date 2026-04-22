@@ -12,7 +12,7 @@ function normalize_mac(mac) {
 function json_out(code, body) {
 	print('Status: ' + code + '\r\n');
 	print('Content-Type: application/json\r\n\r\n');
-	print(json(body));
+	print(body);
 }
 
 function read_stdin() {

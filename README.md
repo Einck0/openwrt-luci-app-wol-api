@@ -1,4 +1,4 @@
-# luci-app-wol-api
+# luci-app-wolapi
 
 一个用于 OpenWrt / ImmortalWrt 的 LuCI 插件项目，提供：
 
@@ -11,7 +11,7 @@
 ## 项目结构
 
 ```text
-luci-app-wol-api/
+luci-app-wolapi/
 ├── Makefile
 ├── htdocs/luci-static/resources/view/wol-api/config.js
 └── root/
@@ -23,8 +23,8 @@ luci-app-wol-api/
     │   ├── libexec/wol-api/
     │   │   └── wake_client.sh
     │   └── share/
-    │       ├── luci/menu.d/luci-app-wol-api.json
-    │       ├── rpcd/acl.d/luci-app-wol-api.json
+    │       ├── luci/menu.d/luci-app-wolapi.json
+    │       ├── rpcd/acl.d/luci-app-wolapi.json
     │       └── ucode/wol-api/wake.uc
     └── www/cgi-bin/wol-api
 ```
@@ -82,8 +82,8 @@ Body 二选一：
 
 ```bash
 make menuconfig
-# LuCI -> Applications -> luci-app-wol-api
-make package/luci-app-wol-api/compile V=s
+# LuCI -> Applications -> luci-app-wolapi
+make package/luci-app-wolapi/compile V=s
 ```
 
 编译前建议先做这几个检查：
@@ -109,8 +109,8 @@ opkg install luci-base rpcd uhttpd ucode etherwake curl
 - `root/etc/init.d/wol-api` -> `/etc/init.d/wol-api`
 - `root/usr/bin/wol-api` -> `/usr/bin/wol-api`
 - `root/usr/share/ucode/wol-api/wake.uc` -> `/usr/share/ucode/wol-api/wake.uc`
-- `root/usr/share/rpcd/acl.d/luci-app-wol-api.json` -> `/usr/share/rpcd/acl.d/luci-app-wol-api.json`
-- `root/usr/share/luci/menu.d/luci-app-wol-api.json` -> `/usr/share/luci/menu.d/luci-app-wol-api.json`
+- `root/usr/share/rpcd/acl.d/luci-app-wolapi.json` -> `/usr/share/rpcd/acl.d/luci-app-wolapi.json`
+- `root/usr/share/luci/menu.d/luci-app-wolapi.json` -> `/usr/share/luci/menu.d/luci-app-wolapi.json`
 - `root/usr/libexec/wol-api/wake_client.sh` -> `/usr/libexec/wol-api/wake_client.sh`
 - `root/www/cgi-bin/wol-api` -> `/www/cgi-bin/wol-api`
 - `htdocs/luci-static/resources/view/wol-api/config.js` -> `/www/luci-static/resources/view/wol-api/config.js`
@@ -244,4 +244,4 @@ curl http://192.168.1.1:8037/cgi-bin/wol-api/healthz
 
 ## GitHub 仓库建议
 
-建议仓库名：`openwrt-luci-app-wol-api`
+建议仓库名：`openwrt-luci-app-wolapi`
