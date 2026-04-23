@@ -62,18 +62,19 @@ return view.extend({
 			knownMap[key] = true;
 		});
 
-		Object.keys(hostHints).sort().forEach(function(mac) {
+		Object.keys(hostHints).sort().forEach(L.bind(function(mac) {
 			var hint = hostHints[mac] || {};
 			var name = hint.name || (Array.isArray(hint.ipaddrs) && hint.ipaddrs[0]) || (Array.isArray(hint.ipv4) && hint.ipv4[0]) || '?';
+			var state = this.getDevicePresence(hostHints, mac);
 			var key = JSON.stringify([name, mac]);
-			var label = String(name) + ' (' + String(mac) + ')';
+			var label = String(name) + ' (' + String(mac) + ')' + (state.online ? ' · ' + _('Online') : ' · ' + _('Offline'));
 
 			if (knownMap[key])
 				return;
 
 			knownDevices.push({ key: key, name: name, mac: mac, label: label, source: 'hosthint' });
 			knownMap[key] = true;
-		});
+		}, this));
 
 		etherwakeHtml = etherwakeTargets.length
 			? '<ul style="margin:0;padding-left:1.2em">' + etherwakeTargets.map(function(t) {
@@ -220,15 +221,30 @@ return view.extend({
 
 		o = s.option(form.DummyValue, '_presence', _('Presence'));
 		o.modalonly = false;
-		o.cfgvalue = L.bind(function(section_id) {
+		o.textvalue = L.bind(function(section_id) {
 			var mac = uci.get('wol-api', section_id, 'mac');
 			var state = this.getDevicePresence(hostHints, mac);
-			var color = state.online ? '#16a34a' : '#6b7280';
-			var details = state.ips.length ? ('<br><small><code>' + String(state.ips.join(', ')) + '</code></small>') : '';
+			var badgeStyle = 'display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6;';
+			var badge = E('span', {
+				'style': badgeStyle + (state.online
+					? 'color:#166534;background:#dcfce7;border:1px solid #86efac;'
+					: 'color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;')
+			}, state.text);
+			var children = [ badge ];
 
-			return '<span style="color:' + color + ';font-weight:600">' + state.text + '</span>' + details;
+			if (state.ips.length)
+				children.push(E('div', {
+					'style': 'margin-top:4px;font-size:12px;color:#64748b;word-break:break-all;'
+				}, state.ips.join(', ')));
+			else
+				children.push(E('div', {
+					'style': 'margin-top:4px;font-size:12px;color:#94a3b8;'
+				}, _('No active IP seen')));
+
+			return E('div', {
+				'style': 'min-width:220px;'
+			}, children);
 		}, this);
-		o.rawhtml = true;
 		o.description = _('Status is inferred from current host hints on the router.');
 
 		return m.render();
