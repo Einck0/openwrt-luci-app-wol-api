@@ -265,13 +265,17 @@ return view.extend({
 		}, this);
 		o.description = _('Status is inferred from current host hints on the router.');
 
-		o = s.option(form.Button, '_wake_now', _('Wake'));
+		o = s.option(form.DummyValue, '_wake_now', _('Wake'));
 		o.modalonly = false;
-		o.inputstyle = 'apply';
-		o.inputtitle = _('Wake');
-		o.onclick = L.bind(function(section_id) {
-			return this.wakeDevice(section_id);
+		o.textvalue = L.bind(function(section_id) {
+			return E('button', {
+				'class': 'cbi-button cbi-button-action important',
+				'click': ui.createHandlerFn(this, function() {
+					return this.wakeDevice(section_id);
+				})
+			}, [ _('Wake') ]);
 		}, this);
+		o.description = _('Send a Wake-on-LAN packet immediately for this device.');
 
 		return m.render();
 	}
