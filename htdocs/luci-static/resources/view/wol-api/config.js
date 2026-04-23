@@ -21,6 +21,27 @@ return view.extend({
 		]);
 	},
 
+	normalizeMac: function(mac) {
+		return String(mac || '').trim().toUpperCase().replace(/-/g, ':');
+	},
+
+	getDevicePresence: function(hostHints, mac) {
+		var hint, ipv4, ipv6, ips;
+
+		hint = hostHints[this.normalizeMac(mac)] || null;
+		if (!hint)
+			return { online: false, text: _('Offline'), ips: [] };
+
+		ipv4 = Array.isArray(hint.ipaddrs) ? hint.ipaddrs.filter(Boolean) : [];
+		ipv6 = Array.isArray(hint.ip6addrs) ? hint.ip6addrs.filter(Boolean) : [];
+		ips = ipv4.concat(ipv6);
+
+		if (ips.length)
+			return { online: true, text: _('Online'), ips: ips };
+
+		return { online: false, text: _('Offline'), ips: [] };
+	},
+
 	render: function(data) {
 		var m, s, o, etherwakeTargets, hostHints, knownDevices, knownMap, etherwakeHtml;
 
@@ -196,6 +217,19 @@ return view.extend({
 		o.rmempty = false;
 		o.datatype = 'macaddr';
 		o.placeholder = _('Choose a known device above or enter a custom MAC');
+
+		o = s.option(form.DummyValue, '_presence', _('Presence'));
+		o.modalonly = false;
+		o.cfgvalue = L.bind(function(section_id) {
+			var mac = uci.get('wol-api', section_id, 'mac');
+			var state = this.getDevicePresence(hostHints, mac);
+			var color = state.online ? '#16a34a' : '#6b7280';
+			var details = state.ips.length ? ('<br><small><code>' + String(state.ips.join(', ')) + '</code></small>') : '';
+
+			return '<span style="color:' + color + ';font-weight:600">' + state.text + '</span>' + details;
+		}, this);
+		o.rawhtml = true;
+		o.description = _('Status is inferred from current host hints on the router.');
 
 		return m.render();
 	}
