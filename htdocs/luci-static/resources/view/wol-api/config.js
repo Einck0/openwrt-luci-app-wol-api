@@ -3,6 +3,7 @@
 'require rpc';
 'require uci';
 'require ui';
+'require fs';
 'require view';
 'require tools.widgets as widgets';
 
@@ -26,20 +27,42 @@ return view.extend({
 	},
 
 	getDevicePresence: function(hostHints, mac) {
-		var hint, ipv4, ipv6, ips;
+		var hint, ipv4, ipv6, primaryIp;
 
 		hint = hostHints[this.normalizeMac(mac)] || null;
 		if (!hint)
-			return { online: false, text: _('Offline'), ips: [] };
+			return { online: false, text: _('Offline'), ips: [], primaryIp: null };
 
 		ipv4 = Array.isArray(hint.ipaddrs) ? hint.ipaddrs.filter(Boolean) : [];
 		ipv6 = Array.isArray(hint.ip6addrs) ? hint.ip6addrs.filter(Boolean) : [];
-		ips = ipv4.concat(ipv6);
+		primaryIp = ipv4[0] || ipv6[0] || null;
 
-		if (ips.length)
-			return { online: true, text: _('Online'), ips: ips };
+		if (primaryIp)
+			return { online: true, text: _('Online'), ips: ipv4.concat(ipv6), primaryIp: primaryIp };
 
-		return { online: false, text: _('Offline'), ips: [] };
+		return { online: false, text: _('Offline'), ips: [], primaryIp: null };
+	},
+
+	wakeDevice: function(section_id) {
+		var mac = uci.get('wol-api', section_id, 'mac');
+		var name = uci.get('wol-api', section_id, 'name') || mac || _('Unknown device');
+		var iface = uci.get('wol-api', 'main', 'interface') || 'br-lan';
+
+		if (!mac) {
+			ui.addNotification(null, E('p', _('No MAC address configured for this device.')));
+			return Promise.resolve();
+		}
+
+		ui.addNotification(null, E('p', _('Sending wake packet to %s…').format(name)));
+
+		return fs.exec('/usr/bin/etherwake', [ '-i', iface, mac ]).then(function(res) {
+			if (res.code === 0)
+				ui.addNotification(null, E('p', _('Wake packet sent to %s.').format(name)));
+			else
+				ui.addNotification(null, E('p', _('Wake failed for %s: %s').format(name, (res.stderr || res.stdout || _('unknown error')).trim())));
+		}).catch(function(err) {
+			ui.addNotification(null, E('p', _('Wake failed for %s: %s').format(name, err)));
+		});
 	},
 
 	render: function(data) {
@@ -232,20 +255,23 @@ return view.extend({
 			}, state.text);
 			var children = [ badge ];
 
-			if (state.ips.length)
-				children.push(E('div', {
-					'style': 'margin-top:4px;font-size:12px;color:#64748b;word-break:break-all;'
-				}, state.ips.join(', ')));
-			else
-				children.push(E('div', {
-					'style': 'margin-top:4px;font-size:12px;color:#94a3b8;'
-				}, _('No active IP seen')));
+			children.push(E('div', {
+				'style': 'margin-top:4px;font-size:12px;color:' + (state.primaryIp ? '#64748b' : '#94a3b8') + ';word-break:break-all;'
+			}, state.primaryIp || _('No active IP seen')));
 
 			return E('div', {
 				'style': 'min-width:220px;'
 			}, children);
 		}, this);
 		o.description = _('Status is inferred from current host hints on the router.');
+
+		o = s.option(form.Button, '_wake_now', _('Wake'));
+		o.modalonly = false;
+		o.inputstyle = 'apply';
+		o.inputtitle = _('Wake');
+		o.onclick = L.bind(function(section_id) {
+			return this.wakeDevice(section_id);
+		}, this);
 
 		return m.render();
 	}
