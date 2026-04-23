@@ -15,7 +15,7 @@ A LuCI app providing Wake-on-LAN API configuration and wake endpoint support.
 
 ## API Usage
 ### Wake endpoint
-- `POST /cgi-bin/wol-api`
+- `POST /wol-api`
 
 Requires header:
 - `Authorization: Bearer <token>`
@@ -32,9 +32,9 @@ or:
 ```
 
 ### Health endpoint
-- `GET /cgi-bin/wol-api/healthz`
+- `GET /wol-api/healthz`
 
 ## Notes
-- The backend is implemented with `uhttpd + CGI + ucode`.
-- `PATH_INFO` is forwarded in the CGI wrapper so the ucode handler can distinguish `/healthz` from wake requests.
-- On the current ImmortalWrt target, clean aliases such as `/wol-api` or `/healthz` were not successfully exposed via the tested `uhttpd` setup; keep the documented CGI path as the stable interface.
+- The backend is implemented with `uhttpd + native ucode handler`.
+- This version depends on `uhttpd-mod-ucode` and serves the API directly under `/wol-api` without the `cgi-bin` prefix.
+- Legacy CGI files may still exist in the package for compatibility during transition, but the service entrypoint is the native `/wol-api` route.
