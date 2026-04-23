@@ -18,7 +18,9 @@ return view.extend({
 		return Promise.all([
 			uci.load('wol-api'),
 			uci.load('etherwake'),
-			this.callHostHints()
+			this.callHostHints(),
+			L.resolveDefault(fs.exec('/sbin/ip', [ '-4', 'neigh', 'show' ]), { stdout: '' }),
+			L.resolveDefault(fs.exec('/sbin/ip', [ '-6', 'neigh', 'show' ]), { stdout: '' })
 		]);
 	},
 
@@ -26,10 +28,69 @@ return view.extend({
 		return String(mac || '').trim().toUpperCase().replace(/-/g, ':');
 	},
 
-	getDevicePresence: function(hostHints, mac) {
-		var hint, ipv4, ipv6, primaryIp;
+	parseNeighbors: function() {
+		var lines = Array.prototype.slice.call(arguments).join('\n').split(/\n+/);
+		var activeStates = {
+			'REACHABLE': true,
+			'STALE': true,
+			'DELAY': true,
+			'PROBE': true,
+			'PERMANENT': true
+		};
+		var map = {};
 
-		hint = hostHints[this.normalizeMac(mac)] || null;
+		lines.forEach(L.bind(function(line) {
+			var parts, ip, mac, state, normalizedMac, entry;
+
+			line = String(line || '').trim();
+			if (!line)
+				return;
+
+			parts = line.split(/\s+/);
+			ip = parts[0];
+			mac = null;
+			state = parts[parts.length - 1] || '';
+
+			for (var i = 0; i < parts.length; i++) {
+				if (parts[i] === 'lladdr' && parts[i + 1]) {
+					mac = parts[i + 1];
+					break;
+				}
+			}
+
+			if (!mac || !activeStates[state])
+				return;
+
+			normalizedMac = this.normalizeMac(mac);
+			entry = map[normalizedMac] || { online: true, text: _('Online'), ipv4: [], ipv6: [] };
+
+			if (ip.indexOf(':') >= 0)
+				entry.ipv6.push(ip);
+			else
+				entry.ipv4.push(ip);
+
+			map[normalizedMac] = entry;
+		}, this));
+
+		return map;
+	},
+
+	getDevicePresence: function(neighborMap, hostHints, mac) {
+		var normalizedMac, entry, hint, ipv4, ipv6, primaryIp;
+
+		normalizedMac = this.normalizeMac(mac);
+		entry = neighborMap[normalizedMac];
+		if (entry) {
+			primaryIp = entry.ipv4[0] || entry.ipv6[0] || null;
+			return {
+				online: true,
+				text: _('Online'),
+				ips: entry.ipv4.concat(entry.ipv6),
+				primaryIp: primaryIp
+			};
+		}
+
+		hint = hostHints[normalizedMac] || null;
 		if (!hint)
 			return { online: false, text: _('Offline'), ips: [], primaryIp: null };
 
@@ -37,10 +98,12 @@ return view.extend({
 		ipv6 = Array.isArray(hint.ip6addrs) ? hint.ip6addrs.filter(Boolean) : [];
 		primaryIp = ipv4[0] || ipv6[0] || null;
 
-		if (primaryIp)
-			return { online: true, text: _('Online'), ips: ipv4.concat(ipv6), primaryIp: primaryIp };
-
-		return { online: false, text: _('Offline'), ips: [], primaryIp: null };
+		return {
+			online: false,
+			text: _('Offline'),
+			ips: ipv4.concat(ipv6),
+			primaryIp: primaryIp
+		};
 	},
 
 	wakeDevice: function(section_id) {
@@ -66,10 +129,11 @@ return view.extend({
 	},
 
 	render: function(data) {
-		var m, s, o, etherwakeTargets, hostHints, knownDevices, knownMap, etherwakeHtml;
+		var m, s, o, etherwakeTargets, hostHints, neighborMap, knownDevices, knownMap, etherwakeHtml;
 
 		etherwakeTargets = uci.sections('etherwake', 'target') || [];
 		hostHints = data[2] || {};
+		neighborMap = this.parseNeighbors((data[3] || {}).stdout || '', (data[4] || {}).stdout || '');
 		knownDevices = [];
 		knownMap = {};
 
@@ -88,7 +152,7 @@ return view.extend({
 		Object.keys(hostHints).sort().forEach(L.bind(function(mac) {
 			var hint = hostHints[mac] || {};
 			var name = hint.name || (Array.isArray(hint.ipaddrs) && hint.ipaddrs[0]) || (Array.isArray(hint.ipv4) && hint.ipv4[0]) || '?';
-			var state = this.getDevicePresence(hostHints, mac);
+			var state = this.getDevicePresence(neighborMap, hostHints, mac);
 			var key = JSON.stringify([name, mac]);
 			var label = String(name) + ' (' + String(mac) + ')' + (state.online ? ' · ' + _('Online') : ' · ' + _('Offline'));
 
@@ -246,7 +310,7 @@ return view.extend({
 		o.modalonly = false;
 		o.textvalue = L.bind(function(section_id) {
 			var mac = uci.get('wol-api', section_id, 'mac');
-			var state = this.getDevicePresence(hostHints, mac);
+			var state = this.getDevicePresence(neighborMap, hostHints, mac);
 			var badgeStyle = 'display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6;';
 			var badge = E('span', {
 				'style': badgeStyle + (state.online
