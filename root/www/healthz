@@ -1,3 +1,0 @@
-#!/bin/sh
-export PATH_INFO="/healthz"
-exec /usr/bin/ucode /usr/share/ucode/wol-api/wake.uc
