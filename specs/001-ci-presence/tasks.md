@@ -3,25 +3,28 @@
 Input: [spec.md](spec.md), [plan.md](plan.md), research/data-model/contracts/quickstart. Existing main only. One complete implementation work package.
 
 ## Phase 1: Setup and foundational verification
-- [x] T001 Read existing related files and target runtime; create/analyze this feature without branches
-- [x] T002 Add failing isolated regression/behavior tests in `tests/`; original red/green evidence retained, review uncovered missing boundary cases
+- [x] T001 Read related source/runtime; create/analyze this feature without branches
+- [x] T002 Add failing isolated regression/behavior tests; red/green history retained
 
 ## Phase 2: US1 (P1) trustworthy presence
-- [x] T003 [US1] Bounded identity-checked `root/usr/libexec/wol-api/probe.sh`; Makefile dependency/executable assurance; remediation: always safe JSON, no glob split, real exit/output semantics and mixed-identity observation
-- [x] T004 [US1] Optional IPv4, safe candidates, row probe/refresh/time in `htdocs/luci-static/resources/view/wol-api/config.js`; remediation: click-time form IPv4/MAC/interface values, invalid explicit IPv4 never falls back, valid result only on successful exec
-- [x] T005 [US1] Exact helper exec in `root/usr/share/rpcd/acl.d/luci-app-wol-api.json`; final independent check still required
+- [x] T003 Bounded identity-checked `root/usr/libexec/wol-api/probe.sh`, safe JSON/no glob, dependency/executable assurance
+- [x] T004 Optional IPv4 and row probe/refresh/time in `config.js`; click-time form values, invalid explicit IP/no silent fallback, successful exec/state validation
+- [x] T005 Exact helper ACL, verified with real temporary rpcd session; helper allowed and unauthorized command denied
 
 ## Phase 3: US2 (P2) cloud package
-- [x] T006 [US2] `.github/workflows/build-ipk.yml`; remediation: staged feed with plugin as child directory (SDK scan -mindepth 1 ignores root Makefile), dynamic exact Makefile VERSION-rRELEASE, actual tar-gzip IPK and exactly-one control validation, no broad write permission for manual build, GH_REPO context for isolated release job
-- [x] T007 [US2] `Makefile` 0.4.1-r1 and `README.md`; align future-proof actual cloud semantics and tests
+- [x] T006 Stable SDK child feed/manual/tag workflow, dynamic VERSION-rRELEASE, exactly-one tar-gzip plugin IPK/checksum, separate minimally privileged Release with GH_REPO
+- [x] T007 `Makefile` 0.4.1-r1 and accurate README/tests
 
 ## Phase 4: gates and US3 (P3)
-- [x] T008 Final isolated regression/static/source checks including newly found boundaries, retain failed independent review facts
-- [ ] T009 Independent reviewer verifies corrected implementation. Original rejected report rep_rev_whole_task_b62e49c7-5df3-4c91-9c31-7293a45c719a remains; new final report must reference it
-- [ ] T010 [US3] Explicit-path commit, fast-forward push main and v0.4.1 tag, no new branch
-- [ ] T011 [US2] Real Actions success/Release/download checksum/control proof
-- [ ] T012 [US3] Private backup/install cloud IPK preserving config; plugin-only loading and safe checks
-- [ ] T013 `.exp.md`/final evidence and plain-text QQ report
+- [x] T008 Final isolated tests/static checks; 60 test cases (59 isolated plus optional external arping smoke)
+- [x] T009 Independent review PASS rep_rev_whole_task_f70551fb-81e1-477e-b398-b63d03113371, references second rejection which references original; see gates.md
+- [x] T010 Source commit 7dc28f013666dcb3162c676f5611e3240683cfae, fast-forward main push and v0.4.1 tag; no new branches
+- [x] T011 Actions 38215815929 success, Release plugin IPK/checksum downloaded and control/payload verified
+- [x] T012 Cloud IPK installed as 0.4.1-r1 with iputils-arping 20240905-r1, private rollback backup, unchanged config fingerprint, healthy plugin and real three-state probes/ACL checks
+- [x] T013 Project experience/evidence and final delivery report prepared; QQ delivery receipt is external to this committed checklist
 
-## Dependencies and findings
-T001 → T002 → T003–T005; T006–T007 before T008 → T009 → T010 → T011 → T012 → T013. No invented gate success. Reviewer rejection rep_rev_whole_task_b7f83fda-0dd0-4417-80e5-9605cfceef98 confirmed prior source fixes pass but separate release job lacked repository context for gh CLI; remediation injected GH_REPO: ${{ github.repository }} and added regression asserting release job repository context. Remediation stays same feature; no new branch/tag before passing source gates.
+## Failures and reverification
+Original review rep_rev_whole_task_b62e49c7-5df3-4c91-9c31-7293a45c719a rejected JSON/glob/version/form issues; second rep_rev_whole_task_b7f83fda-0dd0-4417-80e5-9605cfceef98 verified fixes but rejected missing GH_REPO. Final reviewer explicitly resolved that chain. No failed build/install concealed; real cloud build passed on approved source.
+
+## Remaining coverage limitations
+No actual WOL/power action or physical Windows awake/asleep/off-state test. No graphical/browser critic gate by frozen contract. Manual Actions trigger configured and visible, not separately dispatched (no local API-write credential); actual tag pipeline succeeded. Presence only local IPv4 ARP reachability, not confirmed physical OS power state. Private rollback backup retained outside public repository.
