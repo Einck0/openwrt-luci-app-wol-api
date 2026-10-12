@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-wol-api
-PKG_VERSION:=0.4.0
+PKG_VERSION:=0.4.1
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MIT
@@ -15,7 +15,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI support for WOL API
-  DEPENDS:=+luci-base +rpcd +uhttpd +uhttpd-mod-ucode +ucode +etherwake
+  DEPENDS:=+luci-base +rpcd +uhttpd +uhttpd-mod-ucode +ucode +etherwake +iputils-arping
   PKGARCH:=all
 endef
 
@@ -44,6 +44,8 @@ define Package/$(PKG_NAME)/install
 	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(INSTALL_DIR) $(1)/www
 	$(CP) $(PKG_BUILD_DIR)/htdocs/luci-static $(1)/www/
+	$(INSTALL_DIR) $(1)/usr/libexec/wol-api
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/root/usr/libexec/wol-api/probe.sh $(1)/usr/libexec/wol-api/probe.sh
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))

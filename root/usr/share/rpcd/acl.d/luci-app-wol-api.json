@@ -4,7 +4,9 @@
     "read": {
       "uci": [ "wol-api" ],
       "file": {
-        "/sbin/ip -[46] neigh show": [ "exec" ]
+        "/sbin/ip -[46] neigh show": [ "exec" ],
+        "/usr/libexec/wol-api/probe.sh": [ "exec" ],
+        "/usr/libexec/wol-api/probe.sh *": [ "exec" ]
       },
       "ubus": {
         "file": [ "exec" ]

@@ -1,0 +1,130 @@
+name: Build and Release IPK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build OpenWrt IPK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Validate Tag against Makefile PKG_VERSION
+        run: |
+          MAKEFILE_VER=$(grep -E '^PKG_VERSION:=' Makefile | cut -d= -f2 | tr -d '[:space:]')
+          MAKEFILE_REL=$(grep -E '^PKG_RELEASE:=' Makefile | cut -d= -f2 | tr -d '[:space:]')
+          EXPECTED_VER="${MAKEFILE_VER}-r${MAKEFILE_REL}"
+          echo "Makefile expected version: ${EXPECTED_VER}"
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG_VER="${GITHUB_REF_NAME#v}"
+            echo "Git tag version: ${TAG_VER}"
+            if [ "${TAG_VER}" != "${MAKEFILE_VER}" ]; then
+              echo "Error: Tag version (${TAG_VER}) does not match Makefile PKG_VERSION (${MAKEFILE_VER})" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Stage package feed
+        run: |
+          FEED_STAGING="${{ runner.temp }}/feed-staging"
+          rm -rf "${FEED_STAGING}"
+          mkdir -p "${FEED_STAGING}/luci-app-wol-api"
+          cp Makefile "${FEED_STAGING}/luci-app-wol-api/"
+          cp -r root "${FEED_STAGING}/luci-app-wol-api/"
+          cp -r htdocs "${FEED_STAGING}/luci-app-wol-api/"
+
+      - name: Build packages via OpenWrt SDK
+        uses: openwrt/gh-action-sdk@7fc2640243284ecc44f4a9c3f749a61746ee02cb
+        env:
+          ARCH: x86_64-openwrt-24.10
+          FEED_DIR: ${{ runner.temp }}/feed-staging
+          PACKAGES: luci-app-wol-api
+
+      - name: Verify package control metadata and extract plugin IPK
+        run: |
+          mkdir -p dist
+          MAKEFILE_VER=$(grep -E '^PKG_VERSION:=' Makefile | cut -d= -f2 | tr -d '[:space:]')
+          MAKEFILE_REL=$(grep -E '^PKG_RELEASE:=' Makefile | cut -d= -f2 | tr -d '[:space:]')
+          EXPECTED_VER="${MAKEFILE_VER}-r${MAKEFILE_REL}"
+
+          # 严格校验且仅能匹配到一个本插件候选包
+          CANDIDATES=$(find bin -type f -name 'luci-app-wol-api_*_all.ipk')
+          CANDIDATE_COUNT=$(echo "${CANDIDATES}" | grep -c . || true)
+          if [ "${CANDIDATE_COUNT}" -ne 1 ]; then
+            echo "Error: Expected exactly one plugin candidate, got ${CANDIDATE_COUNT}:" >&2
+            echo "${CANDIDATES}" >&2
+            find bin -type f || true
+            exit 1
+          fi
+
+          PLUGIN_IPK="${CANDIDATES}"
+          cp "${PLUGIN_IPK}" dist/
+          IPK_BASENAME=$(basename "${PLUGIN_IPK}")
+
+          # 按照 scripts/ipkg-build 格式解包 control.tar.gz
+          TMP_DIR=$(mktemp -d)
+          tar -zxf "dist/${IPK_BASENAME}" ./control.tar.gz -O | tar -zxf - -C "${TMP_DIR}" ./control || \
+          tar -zxf "dist/${IPK_BASENAME}" control.tar.gz -O | tar -zxf - -C "${TMP_DIR}" control
+
+          cat "${TMP_DIR}/control"
+          PKG_NAME=$(grep '^Package:' "${TMP_DIR}/control" | awk '{print $2}')
+          PKG_VER=$(grep '^Version:' "${TMP_DIR}/control" | awk '{print $2}')
+          PKG_ARCH=$(grep '^Architecture:' "${TMP_DIR}/control" | awk '{print $2}')
+          rm -rf "${TMP_DIR}"
+
+          if [ "${PKG_NAME}" != "luci-app-wol-api" ]; then
+            echo "Error: Unexpected package name ${PKG_NAME}" >&2
+            exit 1
+          fi
+          if [ "${PKG_ARCH}" != "all" ]; then
+            echo "Error: Expected Architecture all, got ${PKG_ARCH}" >&2
+            exit 1
+          fi
+          if [ "${PKG_VER}" != "${EXPECTED_VER}" ]; then
+            echo "Error: Expected Version ${EXPECTED_VER}, got ${PKG_VER}" >&2
+            exit 1
+          fi
+
+          # 计算 SHA256 校验和
+          cd dist
+          sha256sum "${IPK_BASENAME}" > "${IPK_BASENAME}.sha256"
+          cat "${IPK_BASENAME}.sha256"
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1
+        with:
+          name: luci-app-wol-api-dist
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download plugin artifact
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+        with:
+          name: luci-app-wol-api-dist
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "luci-app-wol-api ${GITHUB_REF_NAME}" \
+            --generate-notes
